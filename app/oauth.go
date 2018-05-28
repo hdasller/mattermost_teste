@@ -613,7 +613,7 @@ func (a *App) GetAuthorizationCode(w http.ResponseWriter, r *http.Request, servi
 
 	redirectUri := siteUrl + "/signup/" + service + "/complete"
 
-	authUrl := "https://gitlab.com/oauth/authorize" + "?response_type=code&client_id=" + clientId + "&redirect_uri=" + url.QueryEscape(redirectUri) + "&state=" + url.QueryEscape(state)
+	authUrl := "https://accounts.google.com/o/oauth2/v2/auth" + "?response_type=code&client_id=" + clientId + "&redirect_uri=" + url.QueryEscape(redirectUri) + "&state=" + url.QueryEscape(state)
 
 	if len(scope) > 0 {
 		authUrl += "&scope=" + utils.UrlEncode(scope)
@@ -627,7 +627,7 @@ func (a *App) GetAuthorizationCode(w http.ResponseWriter, r *http.Request, servi
 }
 
 func (a *App) AuthorizeOAuthUser(w http.ResponseWriter, r *http.Request, service, code, state, redirectUri string) (io.ReadCloser, string, map[string]string, *model.AppError) {
-	sso := a.Config().GetSSOService(service)
+	sso := a.Config().GetSSOService("gitlab")
 	if sso == nil || !sso.Enable {
 		return nil, "", nil, model.NewAppError("AuthorizeOAuthUser", "api.user.authorize_oauth_user.unsupported.app_error", nil, "service="+service, http.StatusNotImplemented)
 	}
@@ -683,9 +683,9 @@ func (a *App) AuthorizeOAuthUser(w http.ResponseWriter, r *http.Request, service
 	p.Set("client_secret", sso.Secret)
 	p.Set("code", code)
 	p.Set("grant_type", model.ACCESS_TOKEN_GRANT_TYPE)
-	p.Set("redirect_uri", "http://localhost:8065/signup/gitlab/complete")
+	p.Set("redirect_uri", "http://localhost:8065/signup/"+service+"/complete")
 
-	req, _ := http.NewRequest("POST", "https://gitlab.com/oauth/token", strings.NewReader(p.Encode()))
+	req, _ := http.NewRequest("POST", "https://www.googleapis.com/oauth2/v4/token", strings.NewReader(p.Encode()))
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
@@ -713,13 +713,14 @@ func (a *App) AuthorizeOAuthUser(w http.ResponseWriter, r *http.Request, service
 
 	p = url.Values{}
 	p.Set("access_token", ar.AccessToken)
-	req, _ = http.NewRequest("GET", sso.UserApiEndpoint, strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "https://www.googleapis.com/plus/v1/people/me", strings.NewReader(""))
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+ar.AccessToken)
 
 	if resp, err := a.HTTPClient(true).Do(req); err != nil {
+		fmt.Println("http client error")
 		return nil, "", stateProps, model.NewAppError("AuthorizeOAuthUser", "api.user.authorize_oauth_user.service.app_error", map[string]interface{}{"Service": service}, err.Error(), http.StatusInternalServerError)
 	} else {
 		return resp.Body, teamId, stateProps, nil
