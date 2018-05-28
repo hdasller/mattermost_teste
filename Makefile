@@ -98,153 +98,11 @@ include build/*.mk
 start-docker: ## Starts the docker containers for local development.
 	@echo Starting docker containers
 
-	@if [ $(shell docker ps -a | grep -ci mattermost-mysql) -eq 0 ]; then \
-		echo starting mattermost-mysql; \
-		docker run --name mattermost-mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=mostest \
-		-e MYSQL_USER=mmuser -e MYSQL_PASSWORD=mostest -e MYSQL_DATABASE=mattermost_test -d mysql:5.7 > /dev/null; \
-	elif [ $(shell docker ps | grep -ci mattermost-mysql) -eq 0 ]; then \
-		echo restarting mattermost-mysql; \
-		docker start mattermost-mysql > /dev/null; \
-	fi
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-postgres) -eq 0 ]; then \
-		echo starting mattermost-postgres; \
-		docker run --name mattermost-postgres -p 5432:5432 -e POSTGRES_USER=mmuser -e POSTGRES_PASSWORD=mostest -e POSTGRES_DB=mattermost_test \
-		-d postgres:9.4 > /dev/null; \
-	elif [ $(shell docker ps | grep -ci mattermost-postgres) -eq 0 ]; then \
-		echo restarting mattermost-postgres; \
-		docker start mattermost-postgres > /dev/null; \
-	fi
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-inbucket) -eq 0 ]; then \
-		echo starting mattermost-inbucket; \
-		docker run --name mattermost-inbucket -p 9000:10080 -p 2500:10025 -d jhillyerd/inbucket:release-1.2.0 > /dev/null; \
-	elif [ $(shell docker ps | grep -ci mattermost-inbucket) -eq 0 ]; then \
-		echo restarting mattermost-inbucket; \
-		docker start mattermost-inbucket > /dev/null; \
-	fi
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-minio) -eq 0 ]; then \
-		echo starting mattermost-minio; \
-		docker run --name mattermost-minio -p 9001:9000 -e "MINIO_ACCESS_KEY=minioaccesskey" \
-		-e "MINIO_SECRET_KEY=miniosecretkey" -d minio/minio:latest server /data > /dev/null; \
-		docker exec -it mattermost-minio /bin/sh -c "mkdir -p /data/mattermost-test" > /dev/null; \
-	elif [ $(shell docker ps | grep -ci mattermost-minio) -eq 0 ]; then \
-		echo restarting mattermost-minio; \
-		docker start mattermost-minio > /dev/null; \
-	fi
-
-ifeq ($(BUILD_ENTERPRISE_READY),true)
-	@echo Ldap test user test.one
-	@if [ $(shell docker ps -a | grep -ci mattermost-openldap) -eq 0 ]; then \
-		echo starting mattermost-openldap; \
-		docker run --name mattermost-openldap -p 389:389 -p 636:636 \
-			-e LDAP_TLS_VERIFY_CLIENT="never" \
-			-e LDAP_ORGANISATION="Mattermost Test" \
-			-e LDAP_DOMAIN="mm.test.com" \
-			-e LDAP_ADMIN_PASSWORD="mostest" \
-			-d osixia/openldap:1.1.6 > /dev/null;\
-		sleep 10; \
-		docker exec -ti mattermost-openldap bash -c 'echo -e "dn: ou=testusers,dc=mm,dc=test,dc=com\nobjectclass: organizationalunit" | ldapadd -x -D "cn=admin,dc=mm,dc=test,dc=com" -w mostest';\
-		docker exec -ti mattermost-openldap bash -c 'echo -e "dn: uid=test.one,ou=testusers,dc=mm,dc=test,dc=com\nobjectclass: iNetOrgPerson\nsn: User\ncn: Test1\nmail: success+testone@simulator.amazonses.com" | ldapadd -x -D "cn=admin,dc=mm,dc=test,dc=com" -w mostest';\
-		docker exec -ti mattermost-openldap bash -c 'ldappasswd -s Password1 -D "cn=admin,dc=mm,dc=test,dc=com" -x "uid=test.one,ou=testusers,dc=mm,dc=test,dc=com" -w mostest';\
-		docker exec -ti mattermost-openldap bash -c 'echo -e "dn: uid=test.two,ou=testusers,dc=mm,dc=test,dc=com\nobjectclass: iNetOrgPerson\nsn: User\ncn: Test2\nmail: success+testtwo@simulator.amazonses.com" | ldapadd -x -D "cn=admin,dc=mm,dc=test,dc=com" -w mostest';\
-		docker exec -ti mattermost-openldap bash -c 'ldappasswd -s Password1 -D "cn=admin,dc=mm,dc=test,dc=com" -x "uid=test.two,ou=testusers,dc=mm,dc=test,dc=com" -w mostest';\
-		docker exec -ti mattermost-openldap bash -c 'echo -e "dn: cn=tgroup,ou=testusers,dc=mm,dc=test,dc=com\nobjectclass: groupOfUniqueNames\nuniqueMember: uid=test.one,ou=testusers,dc=mm,dc=test,dc=com" | ldapadd -x -D "cn=admin,dc=mm,dc=test,dc=com" -w mostest';\
-	elif [ $(shell docker ps | grep -ci mattermost-openldap) -eq 0 ]; then \
-		echo restarting mattermost-openldap; \
-		docker start mattermost-openldap > /dev/null; \
-		sleep 10; \
-	fi
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-elasticsearch) -eq 0 ]; then \
-		echo starting mattermost-elasticsearch; \
-		docker run --name mattermost-elasticsearch -p 9200:9200 -e "http.host=0.0.0.0" -e "transport.host=127.0.0.1" -e "ES_JAVA_OPTS=-Xms250m -Xmx250m" -d grundleborg/elasticsearch:latest > /dev/null; \
-	elif [ $(shell docker ps | grep -ci mattermost-elasticsearch) -eq 0 ]; then \
-		echo restarting mattermost-elasticsearch; \
-		docker start mattermost-elasticsearch> /dev/null; \
-	fi
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-redis) -eq 0 ]; then \
-		echo starting mattermost-redis; \
-		docker run --name mattermost-redis -p 6379:6379 -d redis > /dev/null; \
-	elif [ $(shell docker ps | grep -ci mattermost-redis) -eq 0 ]; then \
-		echo restarting mattermost-redis; \
-		docker start mattermost-redis > /dev/null; \
-	fi
-endif
-
+	
 stop-docker: ## Stops the docker containers for local development.
 	@echo Stopping docker containers
 
-	@if [ $(shell docker ps -a | grep -ci mattermost-mysql) -eq 1 ]; then \
-		echo stopping mattermost-mysql; \
-		docker stop mattermost-mysql > /dev/null; \
-	fi
 
-	@if [ $(shell docker ps -a | grep -ci mattermost-postgres) -eq 1 ]; then \
-		echo stopping mattermost-postgres; \
-		docker stop mattermost-postgres > /dev/null; \
-	fi
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-openldap) -eq 1 ]; then \
-		echo stopping mattermost-openldap; \
-		docker stop mattermost-openldap > /dev/null; \
-	fi
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-inbucket) -eq 1 ]; then \
-		echo stopping mattermost-inbucket; \
-		docker stop mattermost-inbucket > /dev/null; \
-	fi
-
-		@if [ $(shell docker ps -a | grep -ci mattermost-minio) -eq 1 ]; then \
-		echo stopping mattermost-minio; \
-		docker stop mattermost-minio > /dev/null; \
-	fi
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-elasticsearch) -eq 1 ]; then \
-		echo stopping mattermost-elasticsearch; \
-		docker stop mattermost-elasticsearch > /dev/null; \
-	fi
-
-clean-docker: ## Deletes the docker containers for local development.
-	@echo Removing docker containers
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-mysql) -eq 1 ]; then \
-		echo removing mattermost-mysql; \
-		docker stop mattermost-mysql > /dev/null; \
-		docker rm -v mattermost-mysql > /dev/null; \
-	fi
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-postgres) -eq 1 ]; then \
-		echo removing mattermost-postgres; \
-		docker stop mattermost-postgres > /dev/null; \
-		docker rm -v mattermost-postgres > /dev/null; \
-	fi
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-openldap) -eq 1 ]; then \
-		echo removing mattermost-openldap; \
-		docker stop mattermost-openldap > /dev/null; \
-		docker rm -v mattermost-openldap > /dev/null; \
-	fi
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-inbucket) -eq 1 ]; then \
-		echo removing mattermost-inbucket; \
-		docker stop mattermost-inbucket > /dev/null; \
-		docker rm -v mattermost-inbucket > /dev/null; \
-	fi
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-minio) -eq 1 ]; then \
-		echo removing mattermost-minio; \
-		docker stop mattermost-minio > /dev/null; \
-		docker rm -v mattermost-minio > /dev/null; \
-	fi
-
-	@if [ $(shell docker ps -a | grep -ci mattermost-elasticsearch) -eq 1 ]; then \
-		echo removing mattermost-elasticsearch; \
-		docker stop mattermost-elasticsearch > /dev/null; \
-		docker rm -v mattermost-elasticsearch > /dev/null; \
-	fi
 
 govet: ## Runs govet against all packages.
 	@echo Running GOVET
@@ -312,7 +170,7 @@ check-licenses: ## Checks license status.
 	./scripts/license-check.sh $(TE_PACKAGES) $(EE_PACKAGES)
 
 check-prereqs: ## Checks prerequisite software status.
-	./scripts/prereq-check.sh
+#	./scripts/prereq-check.sh
 	
 check-style: govet gofmt check-licenses ## Runs govet and gofmt against all packages.
 

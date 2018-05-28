@@ -8,11 +8,15 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
-
+	"fmt"
+	"strconv"
 	"github.com/mattermost/mattermost-server/app"
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/utils"
+	"github.com/dghubble/gologin/twitter"
+	"github.com/dghubble/oauth1"
+	twitterOAuth1 "github.com/dghubble/oauth1/twitter"
 )
 
 func (api *API) InitOAuth() {
@@ -37,6 +41,15 @@ func (api *API) InitOAuth() {
 	api.BaseRoutes.Root.Handle("/oauth/{service:[A-Za-z0-9]+}/login", api.ApiHandler(loginWithOAuth)).Methods("GET")
 	api.BaseRoutes.Root.Handle("/oauth/{service:[A-Za-z0-9]+}/mobile_login", api.ApiHandler(mobileLoginWithOAuth)).Methods("GET")
 	api.BaseRoutes.Root.Handle("/oauth/{service:[A-Za-z0-9]+}/signup", api.ApiHandler(signupWithOAuth)).Methods("GET")
+	oauth1Config := &oauth1.Config{
+		ConsumerKey:    "K7GRpGzRqy1oaZbPYv0bB3q5R",
+		ConsumerSecret: "RFdnM48TiICDyo5gyWxuzukpQkrTW5sYkF2rBk7bJoKTvNZK9i",
+		CallbackURL:    "http://localhost:8065/twitter/callback",
+		Endpoint:       twitterOAuth1.AuthorizeEndpoint,
+	}
+	api.BaseRoutes.Root.Handle("/twitter/login", twitter.LoginHandler(oauth1Config, nil)).Methods("GET")
+	api.BaseRoutes.Root.Handle("/twitter/callback", twitter.CallbackHandler(oauth1Config, issueSession(), nil)).Methods("GET")
+	
 
 	// Old endpoints for backwards compatibility, needed to not break SSO for any old setups
 	api.BaseRoutes.Root.Handle("/api/v3/oauth/{service:[A-Za-z0-9]+}/complete", api.ApiHandler(completeOAuth)).Methods("GET")
@@ -73,6 +86,54 @@ func createOAuthApp(c *Context, w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(rapp.ToJson()))
 }
+
+func issueSession() http.Handler {
+
+	fn := func(w http.ResponseWriter, req *http.Request) {
+		
+		ctx := req.Context()
+		twitterUser, err := twitter.UserFromContext(ctx)
+		fmt.Printf("\n\n\n twitterUser" , twitterUser)		
+		
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		// 2. Implement a success handler to issue some form of session
+
+		// fmt.Printf("\n\n\n twitterUser" , twitterUser)	
+
+		user := &model.User{}
+		user.Id = strconv.Itoa(int(twitterUser.ID))
+		user.FirstName = twitterUser.Name
+
+		fmt.Printf("\n\n\n twitterUser" , user)	
+
+		// api.ApiHandler(teste)
+		
+		// session, err := c.App.DoLogin(w, req,user, "")
+		// if err != nil {
+		// 	return
+		// }
+		
+		// session, err := c.App.DoLogin(w, r, twitterUser	, "")
+		// if err != nil {
+			
+		// 	return
+		// }
+
+		// c.Session = *session
+
+		// redirectUrl := c.GetSiteURLHeader()
+		
+		// http.Redirect(w, req, "/profile", http.StatusFound)
+	}
+	return http.HandlerFunc(fn)
+}
+
+
+
+
 
 func updateOAuthApp(c *Context, w http.ResponseWriter, r *http.Request) {
 	c.RequireAppId()
@@ -471,8 +532,12 @@ func completeOAuth(c *Context, w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	
+	fmt.Println("\n\n\n nao passou do tradutor");
 
 	user, err := c.App.CompleteOAuth(service, body, teamId, props)
+	fmt.Println("\n\n\n passou do user", user);
+	
 	if err != nil {
 		err.Translate(c.T)
 		mlog.Error(err.Error())
@@ -515,6 +580,9 @@ func completeOAuth(c *Context, w http.ResponseWriter, r *http.Request) {
 }
 
 func loginWithOAuth(c *Context, w http.ResponseWriter, r *http.Request) {
+	
+
+
 	c.RequireService()
 	if c.Err != nil {
 		return
@@ -533,6 +601,7 @@ func loginWithOAuth(c *Context, w http.ResponseWriter, r *http.Request) {
 		c.Err = err
 		return
 	} else {
+		fmt.Println("\n\n\n Teste ", authUrl)
 		http.Redirect(w, r, authUrl, http.StatusFound)
 	}
 }

@@ -560,10 +560,15 @@ func (a *App) GetOAuthStateToken(token string) (*model.Token, *model.AppError) {
 }
 
 func generateOAuthStateTokenExtra(email, action, cookie string) string {
+	fmt.Println("email", email)
+	fmt.Println("action", action)
+	fmt.Println("cookie", cookie)
+	
 	return email + ":" + action + ":" + cookie
 }
 
 func (a *App) GetAuthorizationCode(w http.ResponseWriter, r *http.Request, service string, props map[string]string, loginHint string) (string, *model.AppError) {
+	
 	sso := a.Config().GetSSOService(service)
 	if sso == nil || !sso.Enable {
 		return "", model.NewAppError("GetAuthorizationCode", "api.user.get_authorization_code.unsupported.app_error", nil, "service="+service, http.StatusNotImplemented)
@@ -589,7 +594,7 @@ func (a *App) GetAuthorizationCode(w http.ResponseWriter, r *http.Request, servi
 	http.SetCookie(w, oauthCookie)
 
 	clientId := sso.Id
-	endpoint := sso.AuthEndpoint
+	// endpoint := sso.AuthEndpoint
 	scope := sso.Scope
 
 	tokenExtra := generateOAuthStateTokenExtra(props["email"], props["action"], cookieValue)
@@ -608,7 +613,7 @@ func (a *App) GetAuthorizationCode(w http.ResponseWriter, r *http.Request, servi
 
 	redirectUri := siteUrl + "/signup/" + service + "/complete"
 
-	authUrl := endpoint + "?response_type=code&client_id=" + clientId + "&redirect_uri=" + url.QueryEscape(redirectUri) + "&state=" + url.QueryEscape(state)
+	authUrl := "https://gitlab.com/oauth/authorize" + "?response_type=code&client_id=" + clientId + "&redirect_uri=" + url.QueryEscape(redirectUri) + "&state=" + url.QueryEscape(state)
 
 	if len(scope) > 0 {
 		authUrl += "&scope=" + utils.UrlEncode(scope)
@@ -672,15 +677,15 @@ func (a *App) AuthorizeOAuthUser(w http.ResponseWriter, r *http.Request, service
 	http.SetCookie(w, cookie)
 
 	teamId := stateProps["team_id"]
-
+	fmt.Println("\n\n\n redirect uri", redirectUri)
 	p := url.Values{}
 	p.Set("client_id", sso.Id)
 	p.Set("client_secret", sso.Secret)
 	p.Set("code", code)
 	p.Set("grant_type", model.ACCESS_TOKEN_GRANT_TYPE)
-	p.Set("redirect_uri", redirectUri)
+	p.Set("redirect_uri", "http://localhost:8065/signup/gitlab/complete")
 
-	req, _ := http.NewRequest("POST", sso.TokenEndpoint, strings.NewReader(p.Encode()))
+	req, _ := http.NewRequest("POST", "https://gitlab.com/oauth/token", strings.NewReader(p.Encode()))
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")

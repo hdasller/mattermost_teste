@@ -35,6 +35,7 @@ const (
 	SERVICE_GITLAB    = "gitlab"
 	SERVICE_GOOGLE    = "google"
 	SERVICE_OFFICE365 = "office365"
+	SERVICE_TWITTER   = "twitter"
 
 	GENERIC_NO_CHANNEL_NOTIFICATION = "generic_no_channel"
 	GENERIC_NOTIFICATION            = "generic"
@@ -1800,6 +1801,7 @@ type Config struct {
 	GitLabSettings        SSOSettings
 	GoogleSettings        SSOSettings
 	Office365Settings     SSOSettings
+	TwitterSettings       SSOSettings
 	LdapSettings          LdapSettings
 	ComplianceSettings    ComplianceSettings
 	LocalizationSettings  LocalizationSettings
@@ -1839,6 +1841,8 @@ func (o *Config) GetSSOService(service string) *SSOSettings {
 		return &o.GoogleSettings
 	case SERVICE_OFFICE365:
 		return &o.Office365Settings
+	case SERVICE_TWITTER:
+		return &o.TwitterSettings
 	}
 
 	return nil
