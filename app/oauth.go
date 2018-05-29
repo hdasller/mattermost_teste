@@ -613,7 +613,7 @@ func (a *App) GetAuthorizationCode(w http.ResponseWriter, r *http.Request, servi
 
 	redirectUri := siteUrl + "/signup/" + service + "/complete"
 
-	authUrl := "https://accounts.google.com/o/oauth2/v2/auth" + "?response_type=code&client_id=" + clientId + "&redirect_uri=" + url.QueryEscape(redirectUri) + "&state=" + url.QueryEscape(state)
+	authUrl := "https://api.twitter.com/oauth/authenticate" + "?response_type=code&client_id=" + clientId + "&redirect_uri=" + url.QueryEscape(redirectUri) + "&state=" + url.QueryEscape(state)
 
 	if len(scope) > 0 {
 		authUrl += "&scope=" + utils.UrlEncode(scope)
@@ -685,7 +685,7 @@ func (a *App) AuthorizeOAuthUser(w http.ResponseWriter, r *http.Request, service
 	p.Set("grant_type", model.ACCESS_TOKEN_GRANT_TYPE)
 	p.Set("redirect_uri", "http://localhost:8065/signup/"+service+"/complete")
 
-	req, _ := http.NewRequest("POST", "https://www.googleapis.com/oauth2/v4/token", strings.NewReader(p.Encode()))
+	req, _ := http.NewRequest("POST", "https://api.twitter.com/oauth2/token", strings.NewReader(p.Encode()))
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
@@ -713,7 +713,7 @@ func (a *App) AuthorizeOAuthUser(w http.ResponseWriter, r *http.Request, service
 
 	p = url.Values{}
 	p.Set("access_token", ar.AccessToken)
-	req, _ = http.NewRequest("GET", "https://www.googleapis.com/plus/v1/people/me", strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "https://api.twitter.com/oauth/authenticate", strings.NewReader(""))
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
